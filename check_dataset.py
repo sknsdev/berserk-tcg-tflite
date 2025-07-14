@@ -20,10 +20,10 @@ def check_directory_structure():
     # Проверяем основную папку с картами
     cards_dir = './cards'
     if not os.path.exists(cards_dir):
-        print("❌ Папка './cards' не найдена!")
+        print(" Папка './cards' не найдена!")
         return False
     
-    print(f"✅ Папка '{cards_dir}' найдена")
+    print(f"Папка '{cards_dir}' найдена")
     
     # Проверяем подпапки
     subdirs = [d for d in os.listdir(cards_dir) if os.path.isdir(os.path.join(cards_dir, d))]
@@ -35,25 +35,25 @@ def check_directory_structure():
     total_files = 0
     
     if len(subdirs) > 0:
-        print(f"📁 Найдено подпапок: {len(subdirs)}")
+        print(f" Найдено подпапок: {len(subdirs)}")
         for subdir in subdirs:
             subdir_path = os.path.join(cards_dir, subdir)
             files = [f for f in os.listdir(subdir_path) if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
             total_files += len(files)
-            print(f"   📂 {subdir}: {len(files)} файлов")
+            print(f"    {subdir}: {len(files)} файлов")
     
     if len(root_images) > 0:
         total_files += len(root_images)
         print(f"📄 В корне папки: {len(root_images)} изображений")
         
         if len(subdirs) == 0:
-            print("💡 Изображения находятся в корне папки cards")
-            print("💡 Для организации по классам запустите: python organize_cards.py")
+            print(" Изображения находятся в корне папки cards")
+            print(" Для организации по классам запустите: python organize_cards.py")
     
-    print(f"📊 Всего изображений: {total_files}")
+    print(f" Всего изображений: {total_files}")
     
     if total_files == 0:
-        print("❌ Изображения не найдены!")
+        print(" Изображения не найдены!")
         return False
     
     return True
@@ -64,28 +64,28 @@ def check_base_dataset():
     
     csv_file = './cards_dataset.csv'
     if not os.path.exists(csv_file):
-        print("❌ Файл 'cards_dataset.csv' не найден!")
+        print(" Файл 'cards_dataset.csv' не найден!")
         return False, None
     
     try:
         df = pd.read_csv(csv_file)
-        print(f"✅ Файл '{csv_file}' загружен")
-        print(f"📊 Всего записей: {len(df)}")
+        print(f" Файл '{csv_file}' загружен")
+        print(f" Всего записей: {len(df)}")
         
         # Проверяем структуру
         required_columns = ['filename', 'card_name', 'set_name', 'split']
         # Проверяем наличие поля filepath (новая структура)
         if 'filepath' in df.columns:
-            print("💡 Обнаружена новая структура данных с полем 'filepath'")
+            print(" Обнаружена новая структура данных с полем 'filepath'")
             required_columns.append('filepath')
         
         missing_columns = [col for col in required_columns if col not in df.columns]
         
         if missing_columns:
-            print(f"❌ Отсутствуют столбцы: {missing_columns}")
+            print(f" Отсутствуют столбцы: {missing_columns}")
             return False, None
         
-        print(f"✅ Все необходимые столбцы присутствуют: {list(df.columns)}")
+        print(f" Все необходимые столбцы присутствуют: {list(df.columns)}")
         
         # Проверяем распределение по сплитам
         split_counts = df['split'].value_counts()
@@ -100,14 +100,14 @@ def check_base_dataset():
         
         # Проверяем распределение по картам
         card_counts = df['card_name'].value_counts()
-        print(f"📊 Среднее количество примеров на карту: {card_counts.mean():.1f}")
-        print(f"📊 Минимальное количество примеров: {card_counts.min()}")
-        print(f"📊 Максимальное количество примеров: {card_counts.max()}")
+        print(f" Среднее количество примеров на карту: {card_counts.mean():.1f}")
+        print(f" Минимальное количество примеров: {card_counts.min()}")
+        print(f" Максимальное количество примеров: {card_counts.max()}")
         
         # Проверяем карты с малым количеством примеров
         low_count_cards = card_counts[card_counts < 5]
         if len(low_count_cards) > 0:
-            print(f"\n⚠️  Карты с менее чем 5 примерами ({len(low_count_cards)} карт):")
+            print(f"\n  Карты с менее чем 5 примерами ({len(low_count_cards)} карт):")
             for card, count in low_count_cards.head(10).items():
                 print(f"   {card}: {count} примеров")
             if len(low_count_cards) > 10:
@@ -126,16 +126,16 @@ def check_base_dataset():
                 missing_files.append(file_path)
         
         if missing_files:
-            print(f"\n❌ Не найдены файлы (проверено первые 20):")
+            print(f"\n Не найдены файлы (проверено первые 20):")
             for file in missing_files:
                 print(f"   {file}")
         else:
-            print("\n✅ Файлы существуют (проверено первые 20)")
+            print("\n Файлы существуют (проверено первые 20)")
         
         return True, df
         
     except Exception as e:
-        print(f"❌ Ошибка при загрузке датасета: {e}")
+        print(f" Ошибка при загрузке датасета: {e}")
         return False, None
 
 def check_augmented_dataset():
@@ -146,35 +146,35 @@ def check_augmented_dataset():
     aug_dir = './cards_augmented'
     
     if not os.path.exists(csv_file):
-        print(f"❌ Файл '{csv_file}' не найден")
-        print("💡 Запустите: python data_augmentation.py")
+        print(f" Файл '{csv_file}' не найден")
+        print(" Запустите: python data_augmentation.py")
         return False, None
     
     if not os.path.exists(aug_dir):
-        print(f"❌ Папка '{aug_dir}' не найдена")
-        print("💡 Запустите: python data_augmentation.py")
+        print(f" Папка '{aug_dir}' не найдена")
+        print(" Запустите: python data_augmentation.py")
         return False, None
     
-    print(f"✅ Аугментированный датасет найден")
+    print(f" Аугментированный датасет найден")
     
     try:
         df = pd.read_csv(csv_file)
-        print(f"📊 Записей в аугментированном датасете: {len(df)}")
+        print(f" Записей в аугментированном датасете: {len(df)}")
         
         # Проверяем структуру
         required_columns = ['filename', 'card_name', 'set_name', 'split']
         # Проверяем наличие поля filepath (новая структура)
         if 'filepath' in df.columns:
-            print("💡 Обнаружена новая структура данных с полем 'filepath'")
+            print(" Обнаружена новая структура данных с полем 'filepath'")
             required_columns.append('filepath')
         
         missing_columns = [col for col in required_columns if col not in df.columns]
         
         if missing_columns:
-            print(f"❌ Отсутствуют столбцы: {missing_columns}")
+            print(f" Отсутствуют столбцы: {missing_columns}")
             return False, None
         
-        print(f"✅ Все необходимые столбцы присутствуют: {list(df.columns)}")
+        print(f" Все необходимые столбцы присутствуют: {list(df.columns)}")
         
         # Проверяем распределение по картам
         if 'card_name' in df.columns:
@@ -182,29 +182,29 @@ def check_augmented_dataset():
             min_count = card_counts.min()
             max_count = card_counts.max()
             
-            print(f"📊 Минимум примеров на карту: {min_count}")
-            print(f"📊 Максимум примеров на карту: {max_count}")
-            print(f"📊 Среднее примеров на карту: {card_counts.mean():.1f}")
+            print(f" Минимум примеров на карту: {min_count}")
+            print(f" Максимум примеров на карту: {max_count}")
+            print(f" Среднее примеров на карту: {card_counts.mean():.1f}")
             
             if min_count < 2:
                 problem_cards = card_counts[card_counts < 2]
-                print(f"\n⚠️  ПРОБЛЕМА: {len(problem_cards)} карт все еще с единичными примерами")
-                print("💡 Увеличьте количество аугментаций в data_augmentation.py")
+                print(f"\n  ПРОБЛЕМА: {len(problem_cards)} карт все еще с единичными примерами")
+                print(" Увеличьте количество аугментаций в data_augmentation.py")
                 return False, None
             else:
-                print("\n✅ Все карты имеют достаточно примеров для обучения")
+                print("\n Все карты имеют достаточно примеров для обучения")
         
         # Проверяем типы аугментации
         if 'augmentation_type' in df.columns:
             aug_types = df['augmentation_type'].value_counts()
-            print("\n🔄 Типы аугментации:")
+            print("\n Типы аугментации:")
             for aug_type, count in aug_types.items():
                 print(f"   {aug_type}: {count} изображений")
         
         return True, df
         
     except Exception as e:
-        print(f"❌ Ошибка при чтении аугментированного датасета: {e}")
+        print(f" Ошибка при чтении аугментированного датасета: {e}")
         return False, None
 
 def check_model_files():
@@ -223,19 +223,19 @@ def check_model_files():
         if os.path.exists(file):
             size = os.path.getsize(file)
             if file.endswith('.png'):
-                print(f"✅ {file} ({size} байт)")
+                print(f" {file} ({size} байт)")
             else:
-                print(f"✅ {file} ({size / 1024 / 1024:.1f} MB)")
+                print(f" {file} ({size / 1024 / 1024:.1f} MB)")
             found_files.append(file)
         else:
-            print(f"❌ {file} не найден")
+            print(f" {file} не найден")
     
     if len(found_files) == 0:
-        print("💡 Запустите: python train_model_augmented.py")
+        print(" Запустите: python train_model_augmented.py")
     elif len(found_files) < len(model_files):
-        print("⚠️  Некоторые файлы модели отсутствуют")
+        print("  Некоторые файлы модели отсутствуют")
     else:
-        print("✅ Все файлы модели найдены")
+        print(" Все файлы модели найдены")
     
     return found_files
 
@@ -282,7 +282,7 @@ def plot_dataset_statistics(df_base, df_aug):
     
     plt.tight_layout()
     plt.savefig('dataset_statistics.png', dpi=300, bbox_inches='tight')
-    print("✅ Графики сохранены в dataset_statistics.png")
+    print("Графики сохранены в dataset_statistics.png")
     plt.show()
 
 def generate_report(df_base, df_aug):
@@ -331,17 +331,17 @@ def generate_report(df_base, df_aug):
     with open('dataset_report.json', 'w', encoding='utf-8') as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     
-    print("✅ Отчет сохранен в dataset_report.json")
+    print(" Отчет сохранен в dataset_report.json")
     return report
 
 def main():
     """Основная функция проверки"""
-    print("🔍 ДИАГНОСТИКА ДАТАСЕТА КАРТ BERSERK TCG")
+    print("ДИАГНОСТИКА ДАТАСЕТА КАРТ BERSERK TCG")
     print("=" * 50)
     
     # Проверяем структуру директорий
     if not check_directory_structure():
-        print("\n❌ Критическая ошибка: проблемы со структурой директорий")
+        print("\n Критическая ошибка: проблемы со структурой директорий")
         return
     
     # Проверяем базовый датасет
@@ -358,27 +358,27 @@ def main():
         try:
             plot_dataset_statistics(df_base if base_success else None, df_aug if aug_success else None)
         except Exception as e:
-            print(f"⚠️  Не удалось построить графики: {e}")
+            print(f" Не удалось построить графики: {e}")
     
     # Генерируем отчет
     report = generate_report(df_base if base_success else None, df_aug if aug_success else None)
     
     # Итоговые рекомендации
     print("\n" + "=" * 50)
-    print("🎯 ИТОГОВЫЕ РЕКОМЕНДАЦИИ:")
+    print(" ИТОГОВЫЕ РЕКОМЕНДАЦИИ:")
     
     if len(report['recommendations']) == 0:
-        print("✅ Проблем не обнаружено!")
+        print(" Проблем не обнаружено!")
     else:
         for i, rec in enumerate(report['recommendations'], 1):
             print(f"{i}. {rec}")
     
-    print("\n📊 Подробная информация сохранена в:")
+    print("\n Подробная информация сохранена в:")
     print("   - dataset_report.json (JSON отчет)")
     if os.path.exists('dataset_statistics.png'):
         print("   - dataset_statistics.png (графики)")
     
-    print("\n🚀 Удачи в обучении модели!")
+    print("\n Удачи в обучении модели!")
 
 if __name__ == "__main__":
     main()

@@ -1,3 +1,9 @@
+# Исправление кодировки для корректного вывода эмодзи в Windows
+import sys
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -181,18 +187,18 @@ class BerserkCardClassifier:
 def main():
     print("=== ОБУЧЕНИЕ МОДЕЛИ РАСПОЗНАВАНИЯ КАРТ БЕРСЕРК ===")
     
-    # Проверяем наличие подготовленных данных
-    if not os.path.exists('cards_dataset.csv'):
-        print("Подготавливаем данные...")
-        dataset = BerserkCardDataset()
+    # Проверяем наличие аугментированных данных
+    if not os.path.exists('augmented_cards_dataset.csv'):
+        print("Подготавливаем аугментированные данные...")
+        dataset = BerserkCardDataset('./cards_augmented')
         df = dataset.load_dataset()
         df = dataset.prepare_labels(df)
         dataset.save_label_encoders()
-        df.to_csv('cards_dataset.csv', index=False, encoding='utf-8')
+        df.to_csv('augmented_cards_dataset.csv', index=False, encoding='utf-8')
     else:
-        print("Загружаем подготовленные данные...")
-        df = pd.read_csv('cards_dataset.csv')
-        dataset = BerserkCardDataset()
+        print("Загружаем подготовленные аугментированные данные...")
+        df = pd.read_csv('augmented_cards_dataset.csv')
+        dataset = BerserkCardDataset('./cards_augmented')
     
     # Загружаем изображения
     print("Загружаем изображения...")
@@ -202,12 +208,12 @@ def main():
     print(f"Форма данных: {X.shape}")
     print(f"Количество классов: {len(np.unique(y))}")
     
-    # Разделяем данные
+    # Разделяем данные (убираем stratify из-за классов с единичными примерами)
     X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y, test_size=0.3, random_state=42, stratify=y
+        X, y, test_size=0.3, random_state=42
     )
     X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp
+        X_temp, y_temp, test_size=0.5, random_state=42
     )
     
     print(f"Обучающая выборка: {len(X_train)}")
