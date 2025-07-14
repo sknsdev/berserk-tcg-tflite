@@ -144,21 +144,41 @@ class BerserkCardPredictor:
     
     def test_random_images(self, cards_dir='./cards', num_images=5):
         """Тестирует модель на случайных изображениях"""
-        # Получаем список всех изображений
-        image_files = [f for f in os.listdir(cards_dir) 
-                      if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
+        # Получаем список всех изображений (включая подпапки)
+        image_files = []
+        image_paths = []
+        
+        # Проверяем изображения в корне папки
+        for f in os.listdir(cards_dir):
+            if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png')):
+                image_files.append(f)
+                image_paths.append(os.path.join(cards_dir, f))
+        
+        # Проверяем изображения в подпапках
+        for subdir in os.listdir(cards_dir):
+            subdir_path = os.path.join(cards_dir, subdir)
+            if os.path.isdir(subdir_path):
+                for f in os.listdir(subdir_path):
+                    if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png')):
+                        image_files.append(f)
+                        image_paths.append(os.path.join(subdir_path, f))
+        
+        if not image_files:
+            print("Изображения не найдены!")
+            return []
         
         # Выбираем случайные изображения
-        random_images = random.sample(image_files, min(num_images, len(image_files)))
+        indices = random.sample(range(len(image_files)), min(num_images, len(image_files)))
         
         results = []
         
-        print(f"\n=== ТЕСТИРОВАНИЕ НА {len(random_images)} СЛУЧАЙНЫХ ИЗОБРАЖЕНИЯХ ===")
+        print(f"\n=== ТЕСТИРОВАНИЕ НА {len(indices)} СЛУЧАЙНЫХ ИЗОБРАЖЕНИЯХ ===")
         
-        for i, image_file in enumerate(random_images):
-            print(f"\n--- Изображение {i+1}: {image_file} ---")
+        for i, idx in enumerate(indices):
+            image_file = image_files[idx]
+            image_path = image_paths[idx]
             
-            image_path = os.path.join(cards_dir, image_file)
+            print(f"\n--- Изображение {i+1}: {image_file} ---")
             
             # Получаем истинную информацию из названия файла
             dataset = BerserkCardDataset()
@@ -181,6 +201,7 @@ class BerserkCardPredictor:
                 
                 results.append({
                     'image_file': image_file,
+                    'image_path': image_path,
                     'true_card_id': true_card_id,
                     'predicted_card_id': predicted_card_id,
                     'confidence': prediction['confidence'],
@@ -223,7 +244,12 @@ class BerserkCardPredictor:
                 break
                 
             # Загружаем изображение
-            image_path = os.path.join(cards_dir, result['image_file'])
+            # Используем image_path если есть, иначе строим путь из cards_dir и image_file
+            if 'image_path' in result:
+                image_path = result['image_path']
+            else:
+                image_path = os.path.join(cards_dir, result['image_file'])
+            
             image = Image.open(image_path)
             
             # Отображаем изображение

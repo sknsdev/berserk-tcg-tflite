@@ -124,7 +124,11 @@ class DataAugmentator:
         print(f"Создаем {num_augmentations_per_image} аугментированных версий для каждого изображения...")
         
         for idx, row in tqdm(df.iterrows(), total=len(df), desc="Аугментация"):
-            original_path = os.path.join(self.cards_dir, row['filename'])
+            # Используем filepath если есть, иначе filename
+            if 'filepath' in row and row['filepath']:
+                original_path = os.path.join(self.cards_dir, row['filepath'])
+            else:
+                original_path = os.path.join(self.cards_dir, row['filename'])
             
             try:
                 # Загружаем оригинальное изображение

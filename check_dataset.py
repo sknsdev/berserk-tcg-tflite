@@ -27,14 +27,28 @@ def check_directory_structure():
     
     # Проверяем подпапки
     subdirs = [d for d in os.listdir(cards_dir) if os.path.isdir(os.path.join(cards_dir, d))]
-    print(f"📁 Найдено подпапок: {len(subdirs)}")
+    
+    # Проверяем изображения в корне папки
+    root_images = [f for f in os.listdir(cards_dir) 
+                   if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
     
     total_files = 0
-    for subdir in subdirs:
-        subdir_path = os.path.join(cards_dir, subdir)
-        files = [f for f in os.listdir(subdir_path) if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
-        total_files += len(files)
-        print(f"   📂 {subdir}: {len(files)} файлов")
+    
+    if len(subdirs) > 0:
+        print(f"📁 Найдено подпапок: {len(subdirs)}")
+        for subdir in subdirs:
+            subdir_path = os.path.join(cards_dir, subdir)
+            files = [f for f in os.listdir(subdir_path) if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
+            total_files += len(files)
+            print(f"   📂 {subdir}: {len(files)} файлов")
+    
+    if len(root_images) > 0:
+        total_files += len(root_images)
+        print(f"📄 В корне папки: {len(root_images)} изображений")
+        
+        if len(subdirs) == 0:
+            print("💡 Изображения находятся в корне папки cards")
+            print("💡 Для организации по классам запустите: python organize_cards.py")
     
     print(f"📊 Всего изображений: {total_files}")
     
@@ -48,56 +62,81 @@ def check_base_dataset():
     """Проверяет базовый датасет"""
     print("\n=== ПРОВЕРКА БАЗОВОГО ДАТАСЕТА ===")
     
-    csv_file = 'cards_dataset.csv'
+    csv_file = './cards_dataset.csv'
     if not os.path.exists(csv_file):
-        print(f"❌ Файл '{csv_file}' не найден!")
-        print("💡 Запустите: python data_preparation.py")
-        return None
-    
-    print(f"✅ Файл '{csv_file}' найден")
+        print("❌ Файл 'cards_dataset.csv' не найден!")
+        return False, None
     
     try:
         df = pd.read_csv(csv_file)
-        print(f"📊 Записей в датасете: {len(df)}")
-        print(f"📊 Столбцов: {len(df.columns)}")
-        print(f"📊 Столбцы: {list(df.columns)}")
+        print(f"✅ Файл '{csv_file}' загружен")
+        print(f"📊 Всего записей: {len(df)}")
         
-        # Проверяем распределение по сетам
-        if 'set' in df.columns:
-            print("\n📈 Распределение по сетам:")
-            set_counts = df['set'].value_counts()
-            for set_name, count in set_counts.items():
-                print(f"   {set_name}: {count} карт")
+        # Проверяем структуру
+        required_columns = ['filename', 'card_name', 'set_name', 'split']
+        # Проверяем наличие поля filepath (новая структура)
+        if 'filepath' in df.columns:
+            print("💡 Обнаружена новая структура данных с полем 'filepath'")
+            required_columns.append('filepath')
+        
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            print(f"❌ Отсутствуют столбцы: {missing_columns}")
+            return False, None
+        
+        print(f"✅ Все необходимые столбцы присутствуют: {list(df.columns)}")
+        
+        # Проверяем распределение по сплитам
+        split_counts = df['split'].value_counts()
+        print("\n📈 Распределение по сплитам:")
+        for split, count in split_counts.items():
+            percentage = (count / len(df)) * 100
+            print(f"   {split}: {count} ({percentage:.1f}%)")
         
         # Проверяем уникальные карты
-        if 'card_name' in df.columns:
-            unique_cards = df['card_name'].nunique()
-            print(f"\n🃏 Уникальных карт: {unique_cards}")
-            
-            # Находим карты с минимальным количеством примеров
-            card_counts = df['card_name'].value_counts()
-            min_count = card_counts.min()
-            max_count = card_counts.max()
-            
-            print(f"📊 Минимум примеров на карту: {min_count}")
-            print(f"📊 Максимум примеров на карту: {max_count}")
-            print(f"📊 Среднее примеров на карту: {card_counts.mean():.1f}")
-            
-            # Показываем проблемные карты
-            if min_count < 2:
-                problem_cards = card_counts[card_counts < 2]
-                print(f"\n⚠️  ПРОБЛЕМА: {len(problem_cards)} карт с единичными примерами:")
-                for card, count in problem_cards.items():
-                    print(f"   - {card}: {count} пример")
-                print("💡 Решение: запустите data_augmentation.py")
-            else:
-                print("\n✅ Все карты имеют достаточно примеров для обучения")
+        unique_cards = df['card_name'].nunique()
+        print(f"\n🃏 Уникальных карт: {unique_cards}")
         
-        return df
+        # Проверяем распределение по картам
+        card_counts = df['card_name'].value_counts()
+        print(f"📊 Среднее количество примеров на карту: {card_counts.mean():.1f}")
+        print(f"📊 Минимальное количество примеров: {card_counts.min()}")
+        print(f"📊 Максимальное количество примеров: {card_counts.max()}")
+        
+        # Проверяем карты с малым количеством примеров
+        low_count_cards = card_counts[card_counts < 5]
+        if len(low_count_cards) > 0:
+            print(f"\n⚠️  Карты с менее чем 5 примерами ({len(low_count_cards)} карт):")
+            for card, count in low_count_cards.head(10).items():
+                print(f"   {card}: {count} примеров")
+            if len(low_count_cards) > 10:
+                print(f"   ... и еще {len(low_count_cards) - 10} карт")
+        
+        # Проверяем существование файлов
+        missing_files = []
+        for _, row in df.head(20).iterrows():  # Проверяем только первые 20 для скорости
+            # Используем filepath если есть, иначе filename
+            if 'filepath' in df.columns and pd.notna(row['filepath']):
+                file_path = os.path.join('./cards', row['filepath'])
+            else:
+                file_path = os.path.join('./cards', row['filename'])
+            
+            if not os.path.exists(file_path):
+                missing_files.append(file_path)
+        
+        if missing_files:
+            print(f"\n❌ Не найдены файлы (проверено первые 20):")
+            for file in missing_files:
+                print(f"   {file}")
+        else:
+            print("\n✅ Файлы существуют (проверено первые 20)")
+        
+        return True, df
         
     except Exception as e:
-        print(f"❌ Ошибка при чтении датасета: {e}")
-        return None
+        print(f"❌ Ошибка при загрузке датасета: {e}")
+        return False, None
 
 def check_augmented_dataset():
     """Проверяет аугментированный датасет"""
@@ -109,18 +148,33 @@ def check_augmented_dataset():
     if not os.path.exists(csv_file):
         print(f"❌ Файл '{csv_file}' не найден")
         print("💡 Запустите: python data_augmentation.py")
-        return None
+        return False, None
     
     if not os.path.exists(aug_dir):
         print(f"❌ Папка '{aug_dir}' не найдена")
         print("💡 Запустите: python data_augmentation.py")
-        return None
+        return False, None
     
     print(f"✅ Аугментированный датасет найден")
     
     try:
         df = pd.read_csv(csv_file)
         print(f"📊 Записей в аугментированном датасете: {len(df)}")
+        
+        # Проверяем структуру
+        required_columns = ['filename', 'card_name', 'set_name', 'split']
+        # Проверяем наличие поля filepath (новая структура)
+        if 'filepath' in df.columns:
+            print("💡 Обнаружена новая структура данных с полем 'filepath'")
+            required_columns.append('filepath')
+        
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            print(f"❌ Отсутствуют столбцы: {missing_columns}")
+            return False, None
+        
+        print(f"✅ Все необходимые столбцы присутствуют: {list(df.columns)}")
         
         # Проверяем распределение по картам
         if 'card_name' in df.columns:
@@ -136,7 +190,7 @@ def check_augmented_dataset():
                 problem_cards = card_counts[card_counts < 2]
                 print(f"\n⚠️  ПРОБЛЕМА: {len(problem_cards)} карт все еще с единичными примерами")
                 print("💡 Увеличьте количество аугментаций в data_augmentation.py")
-                return False
+                return False, None
             else:
                 print("\n✅ Все карты имеют достаточно примеров для обучения")
         
@@ -147,11 +201,11 @@ def check_augmented_dataset():
             for aug_type, count in aug_types.items():
                 print(f"   {aug_type}: {count} изображений")
         
-        return df
+        return True, df
         
     except Exception as e:
         print(f"❌ Ошибка при чтении аугментированного датасета: {e}")
-        return None
+        return False, None
 
 def check_model_files():
     """Проверяет наличие файлов модели"""
@@ -291,23 +345,23 @@ def main():
         return
     
     # Проверяем базовый датасет
-    df_base = check_base_dataset()
+    base_success, df_base = check_base_dataset()
     
     # Проверяем аугментированный датасет
-    df_aug = check_augmented_dataset()
+    aug_success, df_aug = check_augmented_dataset()
     
     # Проверяем файлы модели
     model_files = check_model_files()
     
     # Строим графики если есть данные
-    if df_base is not None or df_aug is not None:
+    if (base_success and df_base is not None) or (aug_success and df_aug is not None):
         try:
-            plot_dataset_statistics(df_base, df_aug)
+            plot_dataset_statistics(df_base if base_success else None, df_aug if aug_success else None)
         except Exception as e:
             print(f"⚠️  Не удалось построить графики: {e}")
     
     # Генерируем отчет
-    report = generate_report(df_base, df_aug)
+    report = generate_report(df_base if base_success else None, df_aug if aug_success else None)
     
     # Итоговые рекомендации
     print("\n" + "=" * 50)

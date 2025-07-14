@@ -73,7 +73,9 @@ def check_cards_directory():
         print("❌ Папка 'cards' не найдена")
         return False
     
-    webp_files = list(cards_dir.glob("*.webp"))
+    # Поиск файлов в корне и подпапках
+    webp_files = list(cards_dir.glob("*.webp")) + list(cards_dir.glob("**/*.webp"))
+    
     if not webp_files:
         print("❌ В папке 'cards' нет файлов .webp")
         return False
@@ -82,10 +84,20 @@ def check_cards_directory():
     
     # Анализ структуры файлов
     sets = set()
+    subdirs = set()
+    
     for file in webp_files:
+        # Проверяем, находится ли файл в подпапке
+        if file.parent != cards_dir:
+            subdirs.add(file.parent.name)
+        
+        # Извлекаем набор из имени файла
         parts = file.stem.split('_')
         if len(parts) >= 2:
             sets.add(parts[0])
+    
+    if subdirs:
+        print(f"📁 Найдены подпапки: {', '.join(sorted(subdirs))}")
     
     print(f"📊 Найдены наборы карт: {', '.join(sorted(sets))}")
     return True

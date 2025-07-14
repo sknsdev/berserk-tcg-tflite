@@ -125,15 +125,29 @@ def check_cards_directory():
         print("Создайте папку 'cards' и поместите в неё изображения карт")
         return False
     
-    # Подсчитываем количество файлов
-    card_files = list(cards_path.glob("*.webp"))
+    # Подсчитываем количество файлов в корне и подпапках
+    card_files_root = list(cards_path.glob("*.webp"))
+    card_files_subdirs = list(cards_path.glob("**/*.webp"))
+    # Убираем дубликаты (файлы из корня могут попасть в оба списка)
+    all_files = list(cards_path.glob("*.webp")) + list(cards_path.glob("**/*.webp"))
+    unique_files = list(set(all_files))
+    total_files = len(unique_files)
     
-    if len(card_files) == 0:
+    if total_files == 0:
         print("❌ В папке 'cards' нет файлов .webp")
-        print("Поместите изображения карт в формате WebP в папку 'cards'")
+        print("Поместите изображения карт в формате WebP в папку 'cards' или её подпапки")
         return False
     
-    print(f"✅ Найдено {len(card_files)} изображений карт")
+    # Подсчитываем файлы только в подпапках (исключая корень)
+    subdirs_only = [f for f in card_files_subdirs if f.parent != cards_path]
+    
+    if card_files_root and subdirs_only:
+        print(f"✅ Найдено {total_files} изображений карт ({len(card_files_root)} в корне, {len(subdirs_only)} в подпапках)")
+    elif card_files_root and not subdirs_only:
+        print(f"✅ Найдено {len(card_files_root)} изображений карт в корне папки")
+    else:
+        print(f"✅ Найдено {len(subdirs_only)} изображений карт в подпапках")
+    
     return True
 
 def print_next_steps():

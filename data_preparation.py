@@ -44,11 +44,33 @@ class BerserkCardDataset:
         """Загружает и парсит все файлы карт"""
         print("Загрузка датасета...")
         
-        for filename in os.listdir(self.cards_dir):
-            if filename.lower().endswith(('.webp', '.jpg', '.jpeg', '.png')):
-                card_info = self.parse_filename(filename)
-                if card_info:
-                    self.data.append(card_info)
+        # Проверяем структуру папки
+        subdirs = [d for d in os.listdir(self.cards_dir) 
+                   if os.path.isdir(os.path.join(self.cards_dir, d))]
+        
+        if len(subdirs) > 0:
+            # Структура с подпапками - загружаем из подпапок
+            print("Найдена структура с подпапками, загружаем из подпапок...")
+            for subdir in subdirs:
+                subdir_path = os.path.join(self.cards_dir, subdir)
+                for filename in os.listdir(subdir_path):
+                    if filename.lower().endswith(('.webp', '.jpg', '.jpeg', '.png')):
+                        card_info = self.parse_filename(filename)
+                        if card_info:
+                            # Добавляем путь к подпапке
+                            card_info['filepath'] = os.path.join(subdir, filename)
+                            card_info['class_from_folder'] = subdir
+                            self.data.append(card_info)
+        else:
+            # Изображения в корне папки
+            print("Загружаем изображения из корня папки...")
+            for filename in os.listdir(self.cards_dir):
+                if filename.lower().endswith(('.webp', '.jpg', '.jpeg', '.png')):
+                    card_info = self.parse_filename(filename)
+                    if card_info:
+                        card_info['filepath'] = filename
+                        card_info['class_from_folder'] = None
+                        self.data.append(card_info)
         
         print(f"Найдено {len(self.data)} карт")
         return pd.DataFrame(self.data)
@@ -97,7 +119,12 @@ class BerserkCardDataset:
         
         print("Загрузка изображений...")
         for idx, row in df.iterrows():
-            image_path = os.path.join(self.cards_dir, row['filename'])
+            # Используем filepath если есть, иначе filename
+            if 'filepath' in row and row['filepath']:
+                image_path = os.path.join(self.cards_dir, row['filepath'])
+            else:
+                image_path = os.path.join(self.cards_dir, row['filename'])
+                
             image = self.load_and_preprocess_image(image_path, target_size)
             
             if image is not None:

@@ -88,18 +88,31 @@ def check_data():
     
     # Проверяем подпапки
     subdirs = [d for d in os.listdir(cards_dir) if os.path.isdir(os.path.join(cards_dir, d))]
-    if len(subdirs) == 0:
-        print(f"❌ В папке {cards_dir} не найдено подпапок с картами")
-        return False
     
-    # Подсчитываем количество изображений
+    # Проверяем изображения в корне папки
+    root_images = [f for f in os.listdir(cards_dir) 
+                   if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
+    
     total_images = 0
-    for subdir in subdirs:
-        subdir_path = os.path.join(cards_dir, subdir)
-        image_files = [f for f in os.listdir(subdir_path) 
-                      if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
-        total_images += len(image_files)
-        print(f"📂 {subdir}: {len(image_files)} изображений")
+    
+    if len(subdirs) > 0:
+        # Структура с подпапками
+        print("📁 Найдена структура с подпапками:")
+        for subdir in subdirs:
+            subdir_path = os.path.join(cards_dir, subdir)
+            image_files = [f for f in os.listdir(subdir_path) 
+                          if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
+            total_images += len(image_files)
+            print(f"📂 {subdir}: {len(image_files)} изображений")
+    
+    if len(root_images) > 0:
+        # Изображения в корне папки
+        total_images += len(root_images)
+        print(f"📄 В корне папки: {len(root_images)} изображений")
+        
+        if len(subdirs) == 0:
+            print("💡 Изображения находятся в корне папки cards")
+            print("💡 Для организации по классам запустите: python organize_cards.py")
     
     if total_images == 0:
         print(f"❌ В папке {cards_dir} не найдено изображений")
