@@ -37,8 +37,11 @@ def check_requirements():
         gpus = tf.config.list_physical_devices('GPU')
         if gpus:
             print(f"🎮 Найдено GPU: {len(gpus)} устройств")
+            for i, gpu in enumerate(gpus):
+                print(f"   GPU {i}: {gpu.name}")
         else:
-            print("🔧 GPU не найден, будет использоваться CPU")
+            print("🔧 GPU не найден, будет использоваться CPU компьютера")
+            print("💡 Для диагностики GPU запустите: python gpu_diagnostic.py")
             
     except ImportError:
         print("❌ TensorFlow не установлен")
@@ -83,15 +86,26 @@ def check_data():
         print(f"❌ Папка с картами не найдена: {cards_dir}")
         return False
     
-    # Подсчитываем количество изображений
-    image_files = [f for f in os.listdir(cards_dir) 
-                  if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
+    # Проверяем подпапки
+    subdirs = [d for d in os.listdir(cards_dir) if os.path.isdir(os.path.join(cards_dir, d))]
+    if len(subdirs) == 0:
+        print(f"❌ В папке {cards_dir} не найдено подпапок с картами")
+        return False
     
-    if len(image_files) == 0:
+    # Подсчитываем количество изображений
+    total_images = 0
+    for subdir in subdirs:
+        subdir_path = os.path.join(cards_dir, subdir)
+        image_files = [f for f in os.listdir(subdir_path) 
+                      if f.lower().endswith(('.webp', '.jpg', '.jpeg', '.png'))]
+        total_images += len(image_files)
+        print(f"📂 {subdir}: {len(image_files)} изображений")
+    
+    if total_images == 0:
         print(f"❌ В папке {cards_dir} не найдено изображений")
         return False
     
-    print(f"✅ Найдено {len(image_files)} изображений карт")
+    print(f"✅ Всего найдено {total_images} изображений карт")
     return True
 
 def prepare_data():
@@ -113,6 +127,50 @@ def prepare_data():
         print(f"❌ Ошибка при подготовке данных: {e}")
         return False
 
+def create_augmented_data():
+    """Создает аугментированный датасет"""
+    print("\n=== СОЗДАНИЕ АУГМЕНТИРОВАННОГО ДАТАСЕТА ===")
+    
+    if not os.path.exists('cards_dataset.csv'):
+        print("❌ Базовый датасет не найден. Сначала запустите подготовку данных")
+        return False
+    
+    try:
+        import subprocess
+        result = subprocess.run([sys.executable, "data_augmentation.py"], 
+                              capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            print("✅ Аугментированный датасет успешно создан")
+            print(result.stdout)
+            return True
+        else:
+            print(f"❌ Ошибка при создании аугментированного датасета: {result.stderr}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Ошибка при запуске аугментации: {e}")
+        return False
+
+def check_dataset():
+    """Запускает диагностику датасета"""
+    print("\n=== ДИАГНОСТИКА ДАТАСЕТА ===")
+    
+    try:
+        import subprocess
+        result = subprocess.run([sys.executable, "check_dataset.py"], 
+                              capture_output=True, text=True)
+        
+        print(result.stdout)
+        if result.stderr:
+            print("Предупреждения:", result.stderr)
+        
+        return result.returncode == 0
+        
+    except Exception as e:
+        print(f"❌ Ошибка при запуске диагностики: {e}")
+        return False
+
 def train_model():
     """Запускает обучение модели"""
     print("\n=== ОБУЧЕНИЕ МОДЕЛИ ===")
@@ -128,6 +186,36 @@ def train_model():
         
     except Exception as e:
         print(f"❌ Ошибка при обучении модели: {e}")
+        return False
+
+def train_augmented_model():
+    """Запускает обучение модели с аугментированными данными"""
+    print("\n=== ОБУЧЕНИЕ МОДЕЛИ С АУГМЕНТИРОВАННЫМИ ДАННЫМИ ===")
+    
+    if not os.path.exists('augmented_cards_dataset.csv'):
+        print("❌ Аугментированный датасет не найден")
+        print("💡 Сначала запустите создание аугментированного датасета")
+        return False
+    
+    try:
+        import subprocess
+        start_time = time.time()
+        
+        result = subprocess.run([sys.executable, "train_model_augmented.py"], 
+                              capture_output=False, text=True)
+        
+        end_time = time.time()
+        training_time = end_time - start_time
+        
+        if result.returncode == 0:
+            print(f"\n✅ Обучение с аугментированными данными завершено за {training_time/60:.1f} минут")
+            return True
+        else:
+            print(f"❌ Ошибка при обучении с аугментированными данными")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Ошибка при запуске обучения: {e}")
         return False
 
 def test_model():
@@ -193,16 +281,20 @@ def main():
     
     parser.add_argument(
         'action',
-        choices=['info', 'check', 'compatibility', 'prepare', 'train', 'test', 'full'],
+        choices=['info', 'check', 'compatibility', 'prepare', 'augment', 'diagnose', 'train', 'train-aug', 'test', 'full', 'full-aug'],
         help='''
 Доступные действия:
   info          - Показать информацию о проекте
   check         - Проверить зависимости и данные
   compatibility - Полная проверка совместимости
   prepare       - Подготовить данные для обучения
-  train         - Обучить модель
+  augment       - Создать аугментированный датасет
+  diagnose      - Диагностика датасета
+  train         - Обучить модель (базовый датасет)
+  train-aug     - Обучить модель (аугментированный датасет)
   test          - Протестировать модель
-  full          - Выполнить полный цикл (prepare + train + test)
+  full          - Полный цикл (prepare + train + test)
+  full-aug      - Полный цикл с аугментацией (prepare + augment + train-aug + test)
         '''
     )
     
@@ -234,6 +326,25 @@ def main():
         if not prepare_data():
             sys.exit(1)
     
+    elif args.action == 'augment':
+        if not check_requirements() or not check_data():
+            sys.exit(1)
+        
+        # Подготавливаем базовые данные если нужно
+        if not os.path.exists('cards_dataset.csv'):
+            if not prepare_data():
+                sys.exit(1)
+        
+        if not create_augmented_data():
+            sys.exit(1)
+    
+    elif args.action == 'diagnose':
+        if not check_requirements():
+            sys.exit(1)
+        
+        if not check_dataset():
+            sys.exit(1)
+    
     elif args.action == 'train':
         if not check_requirements() or not check_data():
             sys.exit(1)
@@ -244,6 +355,23 @@ def main():
                 sys.exit(1)
         
         if not train_model():
+            sys.exit(1)
+    
+    elif args.action == 'train-aug':
+        if not check_requirements() or not check_data():
+            sys.exit(1)
+        
+        # Подготавливаем базовые данные если нужно
+        if not os.path.exists('cards_dataset.csv'):
+            if not prepare_data():
+                sys.exit(1)
+        
+        # Создаем аугментированные данные если нужно
+        if not os.path.exists('augmented_cards_dataset.csv'):
+            if not create_augmented_data():
+                sys.exit(1)
+        
+        if not train_augmented_model():
             sys.exit(1)
     
     elif args.action == 'test':
@@ -281,6 +409,49 @@ def main():
         print("• cards_dataset.csv - Подготовленный датасет")
         print("• training_history.png - График обучения")
         print("• test_results.png - Результаты тестирования")
+    
+    elif args.action == 'full-aug':
+        print("\n🚀 ЗАПУСК ПОЛНОГО ЦИКЛА С АУГМЕНТАЦИЕЙ")
+        
+        # Проверки
+        if not check_requirements() or not check_data():
+            sys.exit(1)
+        
+        # Подготовка данных
+        if not prepare_data():
+            sys.exit(1)
+        
+        # Диагностика
+        print("\n📊 Диагностика базового датасета...")
+        check_dataset()
+        
+        # Создание аугментированного датасета
+        if not create_augmented_data():
+            sys.exit(1)
+        
+        # Диагностика аугментированного датасета
+        print("\n📊 Диагностика аугментированного датасета...")
+        check_dataset()
+        
+        # Обучение с аугментированными данными
+        if not train_augmented_model():
+            sys.exit(1)
+        
+        # Тестирование
+        if not test_model():
+            sys.exit(1)
+        
+        print("\n🎉 ПОЛНЫЙ ЦИКЛ С АУГМЕНТАЦИЕЙ УСПЕШНО ЗАВЕРШЕН!")
+        print("\nСозданные файлы:")
+        print("• berserk_card_model_augmented.tflite - TensorFlow Lite модель")
+        print("• berserk_card_model_augmented.h5 - Keras модель")
+        print("• model_info_augmented.json - Информация о модели")
+        print("• augmented_label_encoders.json - Энкодеры меток")
+        print("• cards_dataset.csv - Базовый датасет")
+        print("• augmented_cards_dataset.csv - Аугментированный датасет")
+        print("• training_history_augmented.png - График обучения")
+        print("• dataset_statistics.png - Статистика датасета")
+        print("• dataset_report.json - Отчет о датасете")
 
 if __name__ == "__main__":
     main()
