@@ -46,8 +46,9 @@ class BerserkCardPredictor:
             if 'label_encoders' in self.model_info:
                 self.label_encoders = self.model_info['label_encoders']
             else:
-                # Загружаем из отдельного файла
-                with open('label_encoders.json', 'r', encoding='utf-8') as f:
+                # Загружаем из файла, указанного в model_info
+                encoders_file = self.model_info.get('label_encoders_file', 'label_encoders.json')
+                with open(encoders_file, 'r', encoding='utf-8') as f:
                     self.label_encoders = json.load(f)
             
             print("Информация о модели загружена")
@@ -109,8 +110,7 @@ class BerserkCardPredictor:
             'predicted_class': int(predicted_class),
             'confidence': confidence,
             'card_info': card_info,
-            'probabilities': output_data[0].tolist(),
-            'original_image': original_image
+            'probabilities': output_data[0].tolist()
         }
     
     def decode_prediction(self, predicted_class):
@@ -258,7 +258,7 @@ class BerserkCardPredictor:
             
             # Заголовок с результатами
             color = 'green' if result['is_correct'] else 'red'
-            title = f"True: {result['true_card_id']}\nОжидаемая карта: {result['predicted_card_id']}\nConf: {result['confidence']:.3f}"
+            title = f"Оригинальная карта: {result['true_card_id']}\nПредпологаемая карта: {result['predicted_card_id']}\Уверенность: {result['confidence']:.3f}"
             axes[i].set_title(title, color=color, fontsize=10)
         
         # Скрываем лишние subplot'ы

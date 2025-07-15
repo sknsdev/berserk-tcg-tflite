@@ -101,7 +101,7 @@ class DataAugmentator:
             # Комбинированная аугментация
             aug_image = image
             # Применяем 2-3 случайные аугментации
-            augmentations = random.sample(['rotate', 'brightness', 'contrast', 'saturation'], 
+            augmentations = random.sample(['noise', 'brightness', 'contrast', 'saturation'], 
                                         random.randint(2, 3))
             for aug in augmentations:
                 aug_image = self.augment_image(aug_image, aug)

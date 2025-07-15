@@ -7,6 +7,7 @@
 
 import os
 import io
+import json
 import base64
 from flask import Flask, render_template_string, request, jsonify
 from PIL import Image
@@ -170,6 +171,10 @@ HTML_TEMPLATE = """
         
         <div class="result-container" id="result-container">
             <h3>📊 Результат распознавания:</h3>
+            <div class="result-item" id="card-name-item" style="display: none;">
+                <span class="result-label">Возможно это карта:</span>
+                <span class="result-value" id="card-name">-</span>
+            </div>
             <div class="result-item">
                 <span class="result-label">Сет:</span>
                 <span class="result-value" id="set-name">-</span>
@@ -277,6 +282,15 @@ HTML_TEMPLATE = """
             document.getElementById('confidence').textContent = (result.confidence * 100).toFixed(1) + '%';
             document.getElementById('confidence-fill').style.width = (result.confidence * 100) + '%';
             
+            // Показываем название карты, если оно найдено
+            const cardNameItem = document.getElementById('card-name-item');
+            if (result.card_info.card_name) {
+                document.getElementById('card-name').textContent = result.card_info.card_name;
+                cardNameItem.style.display = 'flex';
+            } else {
+                cardNameItem.style.display = 'none';
+            }
+            
             resultContainer.style.display = 'block';
         }
 
@@ -292,7 +306,9 @@ HTML_TEMPLATE = """
 class WebDemo:
     def __init__(self):
         self.predictor = None
+        self.cards_data = None
         self.load_model()
+        self.load_cards_data()
     
     def load_model(self):
         """Загружает модель для предсказаний"""
@@ -304,6 +320,29 @@ class WebDemo:
                 print("❌ Модель не найдена. Запустите обучение сначала.")
         except Exception as e:
             print(f"❌ Ошибка при загрузке модели: {e}")
+    
+    def load_cards_data(self):
+        """Загружает данные карт из JSON файла"""
+        try:
+            cards_file = os.path.join('web_assets', 'sets.json')
+            if os.path.exists(cards_file):
+                with open(cards_file, 'r', encoding='utf-8') as f:
+                    self.cards_data = json.load(f)
+                print("✅ Данные карт загружены успешно")
+            else:
+                print("❌ Файл с данными карт не найден")
+        except Exception as e:
+            print(f"❌ Ошибка при загрузке данных карт: {e}")
+    
+    def get_card_name(self, card_id):
+        """Получает название карты по ID"""
+        if not self.cards_data:
+            return None
+        
+        for card in self.cards_data.get('cards', []):
+            if card.get('id') == card_id:
+                return card.get('name')
+        return None
     
     def predict_image(self, image_file):
         """Делает предсказание для загруженного изображения"""
@@ -320,6 +359,17 @@ class WebDemo:
             
             # Делаем предсказание
             result = self.predictor.predict(temp_path)
+            
+            # Добавляем название карты, если найдено
+            if result and 'card_info' in result:
+                # Формируем card_id из set_name и card_number
+                set_name = result['card_info'].get('set_name', '')
+                card_number = result['card_info'].get('card_number', '')
+                search_card_id = f"{set_name}_{card_number}"
+                
+                card_name = self.get_card_name(search_card_id)
+                if card_name:
+                    result['card_info']['card_name'] = card_name
             
             # Удаляем временный файл
             if os.path.exists(temp_path):

@@ -27,6 +27,12 @@ class BerserkCardDataset:
         
         if len(parts) < 2:
             return None
+        
+        # Проверяем наличие суффикса аугментации (aug_XX)
+        # Если есть, удаляем последние два элемента (aug и номер)
+        if len(parts) >= 4 and parts[-2] == 'aug':
+            # Убираем суффикс аугментации для определения базовой карты
+            parts = parts[:-2]
             
         set_name = parts[0]  # s1, s2, laar и т.д.
         card_number = parts[1]  # номер карты
@@ -96,45 +102,88 @@ class BerserkCardDataset:
     def load_and_preprocess_image(self, image_path, target_size=(224, 224)):
         """Загружает и предобрабатывает изображение"""
         try:
+            # Проверяем существование файла
+            if not os.path.exists(image_path):
+                print(f"Файл не найден: {image_path}")
+                return None
+                
             image = Image.open(image_path)
+            
             # Конвертируем в RGB если нужно
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # Изменяем размер
-            image = image.resize(target_size)
+            # Изменяем размер с использованием LANCZOS для лучшего качества
+            image = image.resize(target_size, Image.Resampling.LANCZOS)
             
             # Конвертируем в numpy array и нормализуем
-            image_array = np.array(image) / 255.0
+            image_array = np.array(image, dtype=np.float32) / 255.0
+            
+            # Освобождаем память
+            image.close()
             
             return image_array
+        except (OSError, IOError) as e:
+            print(f"Ошибка при загрузке изображения {image_path}: {e}")
+            return None
         except Exception as e:
-            print(f"Ошибка при загрузке {image_path}: {e}")
+            print(f"Неожиданная ошибка при обработке {image_path}: {e}")
             return None
     
     def create_dataset_arrays(self, df, target_size=(224, 224)):
         """Создает массивы изображений и меток"""
         images = []
         labels = []
+        failed_images = []
         
         print("Загрузка изображений...")
-        for idx, row in df.iterrows():
-            # Используем filepath если есть, иначе filename
-            if 'filepath' in row and row['filepath']:
-                image_path = os.path.join(self.cards_dir, row['filepath'])
-            else:
-                image_path = os.path.join(self.cards_dir, row['filename'])
-                
-            image = self.load_and_preprocess_image(image_path, target_size)
-            
-            if image is not None:
-                images.append(image)
-                labels.append(row['card_id_encoded'])
-            
-            if (idx + 1) % 100 == 0:
-                print(f"Обработано {idx + 1}/{len(df)} изображений")
+        total_images = len(df)
         
-        return np.array(images), np.array(labels)
+        for idx, row in df.iterrows():
+            try:
+                # Используем filepath если есть, иначе filename
+                if 'filepath' in row and row['filepath']:
+                    image_path = os.path.join(self.cards_dir, row['filepath'])
+                else:
+                    image_path = os.path.join(self.cards_dir, row['filename'])
+                    
+                image = self.load_and_preprocess_image(image_path, target_size)
+                
+                if image is not None:
+                    images.append(image)
+                    labels.append(row['card_id_encoded'])
+                else:
+                    failed_images.append(image_path)
+                
+                # Показываем прогресс каждые 100 изображений
+                if (idx + 1) % 100 == 0:
+                    print(f"Обработано {idx + 1}/{total_images} изображений")
+                    
+                # Показываем прогресс каждые 1000 изображений с дополнительной информацией
+                if (idx + 1) % 1000 == 0:
+                    success_rate = (len(images) / (idx + 1)) * 100
+                    print(f"Успешно загружено: {len(images)}, Ошибок: {len(failed_images)}, Успешность: {success_rate:.1f}%")
+                    
+            except KeyboardInterrupt:
+                print(f"\nПрервано пользователем на изображении {idx + 1}/{total_images}")
+                print(f"Загружено изображений: {len(images)}")
+                break
+            except Exception as e:
+                print(f"Критическая ошибка при обработке изображения {idx + 1}: {e}")
+                failed_images.append(f"Index {idx}: {e}")
+                continue
+        
+        print(f"\nЗагрузка завершена:")
+        print(f"Успешно загружено: {len(images)} изображений")
+        print(f"Ошибок загрузки: {len(failed_images)}")
+        
+        if failed_images:
+            print(f"Первые 5 проблемных файлов: {failed_images[:5]}")
+        
+        if len(images) == 0:
+            raise ValueError("Не удалось загрузить ни одного изображения!")
+        
+        return np.array(images, dtype=np.float32), np.array(labels)
     
     def save_label_encoders(self, filepath='label_encoders.json'):
         """Сохраняет энкодеры меток"""
