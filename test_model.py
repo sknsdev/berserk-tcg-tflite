@@ -258,7 +258,7 @@ class BerserkCardPredictor:
             
             # Заголовок с результатами
             color = 'green' if result['is_correct'] else 'red'
-            title = f"True: {result['true_card_id']}\nPred: {result['predicted_card_id']}\nConf: {result['confidence']:.3f}"
+            title = f"True: {result['true_card_id']}\nОжидаемая карта: {result['predicted_card_id']}\nConf: {result['confidence']:.3f}"
             axes[i].set_title(title, color=color, fontsize=10)
         
         # Скрываем лишние subplot'ы
