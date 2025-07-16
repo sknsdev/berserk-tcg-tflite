@@ -339,9 +339,15 @@ class WebDemo:
         if not self.cards_data:
             return None
         
-        for card in self.cards_data.get('cards', []):
-            if card.get('id') == card_id:
-                return card.get('name')
+        # card_id имеет формат "set_number_variant", а в sets.json формат "set_number"
+        # Извлекаем set и number из card_id
+        parts = card_id.split('_')
+        if len(parts) >= 2:
+            search_id = f"{parts[0]}_{parts[1]}"
+            
+            for card in self.cards_data.get('cards', []):
+                if card.get('id') == search_id:
+                    return card.get('name')
         return None
     
     def predict_image(self, image_file):
@@ -362,12 +368,8 @@ class WebDemo:
             
             # Добавляем название карты, если найдено
             if result and 'card_info' in result:
-                # Формируем card_id из set_name и card_number
-                set_name = result['card_info'].get('set_name', '')
-                card_number = result['card_info'].get('card_number', '')
-                search_card_id = f"{set_name}_{card_number}"
-                
-                card_name = self.get_card_name(search_card_id)
+                card_id = result['card_info'].get('card_id', '')
+                card_name = self.get_card_name(card_id)
                 if card_name:
                     result['card_info']['card_name'] = card_name
             

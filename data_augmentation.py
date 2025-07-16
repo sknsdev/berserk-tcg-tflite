@@ -25,7 +25,6 @@ from tqdm import tqdm
 
 try:
     import albumentations as A
-    from albumentations.pytorch import ToTensorV2
     ALBUMENTATIONS_AVAILABLE = True
 except ImportError:
     ALBUMENTATIONS_AVAILABLE = False
