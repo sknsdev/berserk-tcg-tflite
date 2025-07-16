@@ -285,55 +285,6 @@ def plot_dataset_statistics(df_base, df_aug):
     print("Графики сохранены в dataset_statistics.png")
     plt.show()
 
-def generate_report(df_base, df_aug):
-    """Генерирует отчет о датасете"""
-    print("\n=== ГЕНЕРАЦИЯ ОТЧЕТА ===")
-    
-    report = {
-        'timestamp': pd.Timestamp.now().isoformat(),
-        'base_dataset': {},
-        'augmented_dataset': {},
-        'recommendations': []
-    }
-    
-    # Базовый датасет
-    if df_base is not None:
-        report['base_dataset'] = {
-            'total_images': len(df_base),
-            'unique_cards': df_base['card_name'].nunique() if 'card_name' in df_base.columns else 0,
-            'sets': df_base['set'].value_counts().to_dict() if 'set' in df_base.columns else {},
-            'min_examples_per_card': df_base['card_name'].value_counts().min() if 'card_name' in df_base.columns else 0
-        }
-    
-    # Аугментированный датасет
-    if df_aug is not None:
-        report['augmented_dataset'] = {
-            'total_images': len(df_aug),
-            'unique_cards': df_aug['card_name'].nunique() if 'card_name' in df_aug.columns else 0,
-            'min_examples_per_card': df_aug['card_name'].value_counts().min() if 'card_name' in df_aug.columns else 0,
-            'augmentation_types': df_aug['augmentation_type'].value_counts().to_dict() if 'augmentation_type' in df_aug.columns else {}
-        }
-    
-    # Рекомендации
-    if df_base is not None and 'card_name' in df_base.columns:
-        min_count = df_base['card_name'].value_counts().min()
-        if min_count < 2:
-            report['recommendations'].append("Запустите data_augmentation.py для решения проблемы с единичными примерами")
-    
-    if df_aug is not None and 'card_name' in df_aug.columns:
-        min_count_aug = df_aug['card_name'].value_counts().min()
-        if min_count_aug < 2:
-            report['recommendations'].append("Увеличьте количество аугментаций в data_augmentation.py")
-        elif min_count_aug >= 2:
-            report['recommendations'].append("Датасет готов для обучения! Запустите train_model_augmented.py")
-    
-    # Сохраняем отчет
-    with open('dataset_report.json', 'w', encoding='utf-8') as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-    
-    print(" Отчет сохранен в dataset_report.json")
-    return report
-
 def main():
     """Основная функция проверки"""
     print("ДИАГНОСТИКА ДАТАСЕТА КАРТ BERSERK TCG")
@@ -374,7 +325,6 @@ def main():
             print(f"{i}. {rec}")
     
     print("\n Подробная информация сохранена в:")
-    print("   - dataset_report.json (JSON отчет)")
     if os.path.exists('dataset_statistics.png'):
         print("   - dataset_statistics.png (графики)")
     
