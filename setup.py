@@ -67,11 +67,6 @@ def get_requirements_file():
     """Определяет подходящий файл requirements в зависимости от версии Python"""
     version = sys.version_info
     
-    # Для Python 3.13+ используем специальный файл
-    if version.major == 3 and version.minor >= 13:
-        if Path("requirements-py313.txt").exists():
-            return "requirements-py313.txt"
-    
     # Для остальных версий используем основной файл
     if Path("requirements.txt").exists():
         return "requirements.txt"
@@ -111,9 +106,7 @@ def install_requirements():
     else:
         print(f"❌ Ошибка установки зависимостей: {output}")
         print("\n💡 Попробуйте следующие решения:")
-        print("1. Обновите Python до версии 3.9-3.12")
-        print("2. Установите зависимости вручную: pip install tensorflow numpy pillow")
-        print("3. Используйте conda вместо pip")
+        print("Обновите Python до версии 3.9-3.12")
         return False
 
 def check_cards_directory():
@@ -160,13 +153,21 @@ def print_next_steps():
     print("\n📋 СЛЕДУЮЩИЕ ШАГИ:")
     print("\n1. Активируйте виртуальное окружение:")
     print(f"   {activation_cmd}")
-    print("\n2. Проверьте данные:")
-    print("   python main.py check")
-    print("\n3. Запустите обучение модели:")
-    print("   python main.py full")
-    print("\n4. Запустите веб-демонстрацию:")
-    print("   python web_demo.py")
-    print("\n5. Для деактивации окружения:")
+    print("\n2. Проверьте окружение и данные:")
+    print("   python cli.py check")
+    print("\n3. Создайте аугментированный датасет:")
+    print("   python cli.py augment")
+    print("\n4. Обучите модель:")
+    print("   python cli.py train")
+    print("\n5. Протестируйте модель:")
+    print("   python cli.py test")
+    print("\n6. Запустите веб-демонстрацию:")
+    print("   python cli.py web")
+    print("\n💡 Или выполните всё сразу:")
+    print("   python cli.py full")
+    print("\n7. Для дообучения существующей модели:")
+    print("   python cli.py continue")
+    print("\n8. Для деактивации окружения:")
     print("   deactivate")
     print("\n" + "="*60)
 

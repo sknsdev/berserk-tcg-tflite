@@ -188,6 +188,28 @@ def main():
     print("=== ОБУЧЕНИЕ МОДЕЛИ РАСПОЗНАВАНИЯ КАРТ БЕРСЕРК ===")
     
     try:
+        # ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА АУГМЕНТИРОВАННЫХ ДАННЫХ
+        if not os.path.exists('./cards_augmented') or not os.path.exists('augmented_cards_dataset.csv'):
+            print("❌ ОШИБКА: Аугментированные данные не найдены!")
+            print("Обучение без аугментированного датасета запрещено.")
+            print("")
+            print("Выполните следующие шаги:")
+            print("1. python cli.py augment  # Создать аугментированный датасет")
+            print("2. python cli.py train    # Запустить обучение")
+            print("")
+            print("Или используйте полный пайплайн:")
+            print("python cli.py full")
+            return False
+        
+        # Проверяем количество файлов в аугментированной папке
+        aug_files = list(Path('./cards_augmented').glob('*.webp'))
+        if len(aug_files) == 0:
+            print("❌ ОШИБКА: В папке cards_augmented нет файлов!")
+            print("Сначала создайте аугментированный датасет: python cli.py augment")
+            return False
+        
+        print(f"✅ Найдено {len(aug_files)} аугментированных изображений")
+        
         # Проверяем наличие аугментированных данных
         if not os.path.exists('augmented_cards_dataset.csv'):
             print("Подготавливаем аугментированные данные...")
@@ -302,6 +324,112 @@ def main():
         import traceback
         traceback.print_exc()
         return
+
+def continue_training_main():
+    """Дообучает существующую модель"""
+    print("=== ДООБУЧЕНИЕ СУЩЕСТВУЮЩЕЙ МОДЕЛИ ===")
+    
+    try:
+        # Проверяем наличие существующей модели
+        if not os.path.exists('berserk_card_model.h5'):
+            print("❌ Существующая модель не найдена")
+            return False
+        
+        # Загружаем существующую модель
+        print("Загружаем существующую модель...")
+        model = tf.keras.models.load_model('berserk_card_model.h5')
+        print("✅ Модель загружена")
+        
+        # Проверяем наличие аугментированных данных
+        if not os.path.exists('augmented_cards_dataset.csv'):
+            print("Подготавливаем аугментированные данные...")
+            dataset = BerserkCardDataset('./cards_augmented')
+            df = dataset.load_dataset()
+            df = dataset.prepare_labels(df)
+            dataset.save_label_encoders()
+            df.to_csv('augmented_cards_dataset.csv', index=False, encoding='utf-8')
+        else:
+            print("Загружаем подготовленные аугментированные данные...")
+            df = pd.read_csv('augmented_cards_dataset.csv')
+            dataset = BerserkCardDataset('./cards_augmented')
+        
+        # Загружаем данные
+        if os.path.exists('X_data.npy') and os.path.exists('y_data.npy'):
+            print("Загружаем сохраненные массивы данных...")
+            X = np.load('X_data.npy')
+            y = np.load('y_data.npy')
+        else:
+            print("Загружаем изображения...")
+            X, y = dataset.create_dataset_arrays(df, target_size=(224, 224))
+            np.save('X_data.npy', X)
+            np.save('y_data.npy', y)
+        
+        print(f"Загружено {len(X)} изображений")
+        
+        # Разделяем данные
+        X_train, X_temp, y_train, y_temp = train_test_split(
+            X, y, test_size=0.3, random_state=42
+        )
+        X_val, X_test, y_val, y_test = train_test_split(
+            X_temp, y_temp, test_size=0.5, random_state=42
+        )
+        
+        del X, y
+        import gc
+        gc.collect()
+        
+        print(f"Обучающая выборка: {len(X_train)}")
+        print(f"Валидационная выборка: {len(X_val)}")
+        print(f"Тестовая выборка: {len(X_test)}")
+        
+        # Создаем объект классификатора с загруженной моделью
+        num_classes = len(np.unique(y_train))
+        classifier = BerserkCardClassifier(
+            input_shape=(224, 224, 3),
+            num_classes=num_classes
+        )
+        classifier.model = model
+        
+        # Размораживаем модель для дообучения
+        print("\n=== ПОДГОТОВКА К ДООБУЧЕНИЮ ===")
+        classifier.fine_tune_model(learning_rate=0.00001)  # Очень низкий learning rate
+        
+        # Дообучаем модель
+        print("\n=== ДООБУЧЕНИЕ ===")
+        history = classifier.train(X_train, y_train, X_val, y_val, epochs=5, batch_size=16)
+        
+        # Оценка модели
+        print("\n=== ОЦЕНКА ДООБУЧЕННОЙ МОДЕЛИ ===")
+        test_accuracy, y_pred = classifier.evaluate(X_test, y_test)
+        
+        # Строим графики
+        classifier.plot_training_history()
+        
+        # Конвертируем в TensorFlow Lite
+        print("\n=== КОНВЕРТАЦИЯ В TENSORFLOW LITE ===")
+        tflite_model = classifier.convert_to_tflite('berserk_card_model.tflite')
+        
+        # Сохраняем информацию о модели
+        with open('label_encoders.json', 'r', encoding='utf-8') as f:
+            label_encoders = json.load(f)
+        
+        classifier.save_model_info('model_info.json', label_encoders)
+        
+        # Сохраняем дообученную модель
+        model.save('berserk_card_model.h5')
+        print("Дообученная Keras модель сохранена: berserk_card_model.h5")
+        
+        print("\n=== ДООБУЧЕНИЕ ЗАВЕРШЕНО ===")
+        print(f"Финальная точность: {test_accuracy:.4f}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n=== ОШИБКА ПРИ ДООБУЧЕНИИ ===")
+        print(f"Произошла ошибка: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 if __name__ == "__main__":
     main()
