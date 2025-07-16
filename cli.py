@@ -37,7 +37,14 @@ def check_environment():
 
 def check_augmented_data():
     """Проверяет наличие аугментированных данных"""
-    return Path("cards_augmented").exists() and len(list(Path("cards_augmented").glob("*.webp"))) > 0
+    if not Path("cards_augmented").exists():
+        return False
+    
+    # Проверяем наличие файлов в новой структуре (cards_augmented/<set>/<variant>/)
+    augmented_files = list(Path("cards_augmented").rglob("*.webp"))
+    csv_file = Path("cards_augmented/augmented_dataset.csv")
+    
+    return len(augmented_files) > 0 and csv_file.exists()
 
 def create_augmented_data():
     """Создает аугментированный датасет"""
@@ -50,9 +57,7 @@ def create_augmented_data():
             return True
     
     try:
-        from data_augmentation import DataAugmentator
-        
-        augmentator = DataAugmentator()
+        from data_augmentation import AdvancedDataAugmentator, AugmentationConfig
         
         # Спрашиваем количество аугментаций
         try:
@@ -62,9 +67,17 @@ def create_augmented_data():
         except ValueError:
             num_augs = 4
         
+        # Создаем конфигурацию
+        config = AugmentationConfig(num_augmentations=num_augs)
+        augmentator = AdvancedDataAugmentator(config=config)
+        
         # Создаем аугментированный датасет
-        aug_info = augmentator.create_augmented_dataset(num_augs)
-        aug_df = augmentator.create_augmented_labels()
+        aug_df = augmentator.create_augmented_dataset(mode='full')
+        
+        if not aug_df.empty:
+            # Обновляем CSV и создаем энкодеры
+            augmentator.update_csv_dataset(aug_df)
+            aug_df = augmentator.create_labels_and_encoders(aug_df)
         
         print("✅ Аугментированный датасет создан")
         return True

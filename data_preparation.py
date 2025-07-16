@@ -88,8 +88,8 @@ class BerserkCardDataset:
         df['card_encoded'] = self.label_encoders['card_number'].fit_transform(df['card_number'])
         df['variant_encoded'] = self.label_encoders['variant'].fit_transform(df['variant'])
         
-        # Создаем уникальный ID для каждой карты
-        df['card_id'] = df['set_name'] + '_' + df['card_number'] + '_' + df['variant']
+        # Создаем уникальный ID для каждой карты (преобразуем все в строки)
+        df['card_id'] = df['set_name'].astype(str) + '_' + df['card_number'].astype(str) + '_' + df['variant'].astype(str)
         
         # Кодируем полный ID карты
         card_id_encoder = LabelEncoder()

@@ -12,6 +12,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 import json
 import os
+from pathlib import Path
 from data_preparation import BerserkCardDataset
 from tqdm import tqdm
 
@@ -189,7 +190,7 @@ def main():
     
     try:
         # ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА АУГМЕНТИРОВАННЫХ ДАННЫХ
-        if not os.path.exists('./cards_augmented') or not os.path.exists('augmented_cards_dataset.csv'):
+        if not os.path.exists('./cards_augmented') or not os.path.exists('./cards_augmented/augmented_dataset.csv'):
             print("❌ ОШИБКА: Аугментированные данные не найдены!")
             print("Обучение без аугментированного датасета запрещено.")
             print("")
@@ -202,7 +203,7 @@ def main():
             return False
         
         # Проверяем количество файлов в аугментированной папке
-        aug_files = list(Path('./cards_augmented').glob('*.webp'))
+        aug_files = list(Path('./cards_augmented').rglob('*.webp'))
         if len(aug_files) == 0:
             print("❌ ОШИБКА: В папке cards_augmented нет файлов!")
             print("Сначала создайте аугментированный датасет: python cli.py augment")
@@ -210,18 +211,24 @@ def main():
         
         print(f"✅ Найдено {len(aug_files)} аугментированных изображений")
         
-        # Проверяем наличие аугментированных данных
-        if not os.path.exists('augmented_cards_dataset.csv'):
-            print("Подготавливаем аугментированные данные...")
-            dataset = BerserkCardDataset('./cards_augmented')
-            df = dataset.load_dataset()
-            df = dataset.prepare_labels(df)
-            dataset.save_label_encoders()
-            df.to_csv('augmented_cards_dataset.csv', index=False, encoding='utf-8')
+        # Загружаем и подготавливаем аугментированные данные
+        print("Подготавливаем аугментированные данные...")
+        dataset = BerserkCardDataset('./cards_augmented')
+        
+        if os.path.exists('./cards_augmented/augmented_dataset.csv'):
+            print("Загружаем существующий CSV...")
+            df = pd.read_csv('./cards_augmented/augmented_dataset.csv')
         else:
-            print("Загружаем подготовленные аугментированные данные...")
-            df = pd.read_csv('augmented_cards_dataset.csv')
-            dataset = BerserkCardDataset('./cards_augmented')
+            print("Создаем новый CSV...")
+            df = dataset.load_dataset()
+        
+        # Всегда применяем prepare_labels для создания encoded колонок
+        print("Применяем кодирование меток...")
+        df = dataset.prepare_labels(df)
+        
+        # Сохраняем обновленные данные
+        dataset.save_label_encoders('./cards_augmented/augmented_label_encoders.json')
+        df.to_csv('./cards_augmented/augmented_dataset.csv', index=False, encoding='utf-8')
         
         # Проверяем наличие готовых массивов данных
         if os.path.exists('X_data.npy') and os.path.exists('y_data.npy'):
@@ -283,12 +290,12 @@ def main():
         
         # Первый этап обучения
         print("\n=== ПЕРВЫЙ ЭТАП ОБУЧЕНИЯ ===")
-        history1 = classifier.train(X_train, y_train, X_val, y_val, epochs=10, batch_size=32)
+        history1 = classifier.train(X_train, y_train, X_val, y_val, epochs=15, batch_size=32)
         
         # Fine-tuning
         print("\n=== FINE-TUNING ===")
         classifier.fine_tune_model()
-        history2 = classifier.train(X_train, y_train, X_val, y_val, epochs=10, batch_size=16)
+        history2 = classifier.train(X_train, y_train, X_val, y_val, epochs=15, batch_size=16)
         
         # Оценка модели
         print("\n=== ОЦЕНКА МОДЕЛИ ===")
@@ -302,7 +309,7 @@ def main():
         tflite_model = classifier.convert_to_tflite('berserk_card_model.tflite')
         
         # Сохраняем информацию о модели
-        with open('label_encoders.json', 'r', encoding='utf-8') as f:
+        with open('./cards_augmented/augmented_label_encoders.json', 'r', encoding='utf-8') as f:
             label_encoders = json.load(f)
         
         classifier.save_model_info('model_info.json', label_encoders)
@@ -340,18 +347,24 @@ def continue_training_main():
         model = tf.keras.models.load_model('berserk_card_model.h5')
         print("✅ Модель загружена")
         
-        # Проверяем наличие аугментированных данных
-        if not os.path.exists('augmented_cards_dataset.csv'):
-            print("Подготавливаем аугментированные данные...")
-            dataset = BerserkCardDataset('./cards_augmented')
-            df = dataset.load_dataset()
-            df = dataset.prepare_labels(df)
-            dataset.save_label_encoders()
-            df.to_csv('augmented_cards_dataset.csv', index=False, encoding='utf-8')
+        # Загружаем и подготавливаем аугментированные данные
+        print("Подготавливаем аугментированные данные...")
+        dataset = BerserkCardDataset('./cards_augmented')
+        
+        if os.path.exists('./cards_augmented/augmented_dataset.csv'):
+            print("Загружаем существующий CSV...")
+            df = pd.read_csv('./cards_augmented/augmented_dataset.csv')
         else:
-            print("Загружаем подготовленные аугментированные данные...")
-            df = pd.read_csv('augmented_cards_dataset.csv')
-            dataset = BerserkCardDataset('./cards_augmented')
+            print("Создаем новый CSV...")
+            df = dataset.load_dataset()
+        
+        # Всегда применяем prepare_labels для создания encoded колонок
+        print("Применяем кодирование меток...")
+        df = dataset.prepare_labels(df)
+        
+        # Сохраняем обновленные данные
+        dataset.save_label_encoders('./cards_augmented/augmented_label_encoders.json')
+        df.to_csv('./cards_augmented/augmented_dataset.csv', index=False, encoding='utf-8')
         
         # Загружаем данные
         if os.path.exists('X_data.npy') and os.path.exists('y_data.npy'):
@@ -410,7 +423,7 @@ def continue_training_main():
         tflite_model = classifier.convert_to_tflite('berserk_card_model.tflite')
         
         # Сохраняем информацию о модели
-        with open('label_encoders.json', 'r', encoding='utf-8') as f:
+        with open('./cards_augmented/augmented_label_encoders.json', 'r', encoding='utf-8') as f:
             label_encoders = json.load(f)
         
         classifier.save_model_info('model_info.json', label_encoders)
