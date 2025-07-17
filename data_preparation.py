@@ -17,12 +17,29 @@ class BerserkCardDataset:
             'variant': LabelEncoder()
         }
         
-    def parse_filename(self, filename):
+    def parse_filename(self, filename, folder_path=None):
         """Парсит название файла карты и извлекает информацию"""
         # Убираем расширение
         name = os.path.splitext(filename)[0]
         
-        # Разбиваем по подчеркиванию
+        # Если есть путь к папке, извлекаем информацию из структуры папок
+        if folder_path:
+            path_parts = folder_path.split(os.sep)
+            if len(path_parts) >= 2:
+                # Структура: cards/set_name/card_number/filename
+                set_name = path_parts[-2]  # предпоследняя часть пути - set
+                card_number = path_parts[-1]  # последняя часть пути - номер карты
+                variant = 'normal'  # по умолчанию normal для новой структуры
+                
+                return {
+                    'filename': filename,
+                    'set_name': set_name,
+                    'card_number': card_number,
+                    'variant': variant,
+                    'full_name': name
+                }
+        
+        # Fallback: старая логика парсинга по имени файла
         parts = name.split('_')
         
         if len(parts) < 2:
@@ -55,18 +72,47 @@ class BerserkCardDataset:
                    if os.path.isdir(os.path.join(self.cards_dir, d))]
         
         if len(subdirs) > 0:
-            # Структура с подпапками - загружаем из подпапок
-            print("Найдена структура с подпапками, загружаем из подпапок...")
-            for subdir in subdirs:
-                subdir_path = os.path.join(self.cards_dir, subdir)
-                for filename in os.listdir(subdir_path):
-                    if filename.lower().endswith(('.webp', '.jpg', '.jpeg', '.png')):
-                        card_info = self.parse_filename(filename)
-                        if card_info:
-                            # Добавляем путь к подпапке
-                            card_info['filepath'] = os.path.join(subdir, filename)
-                            card_info['class_from_folder'] = subdir
-                            self.data.append(card_info)
+            # Структура с подпапками - проверяем, есть ли вложенные папки (новая структура)
+            print("Найдена структура с подпапками...")
+            
+            # Проверяем первую подпапку на наличие вложенных папок
+            first_subdir_path = os.path.join(self.cards_dir, subdirs[0])
+            nested_dirs = [d for d in os.listdir(first_subdir_path) 
+                          if os.path.isdir(os.path.join(first_subdir_path, d))]
+            
+            if len(nested_dirs) > 0:
+                # Новая структура: cards/set/card_number/images
+                print("Обнаружена новая структура: cards/set/card_number/")
+                for set_dir in subdirs:
+                    set_path = os.path.join(self.cards_dir, set_dir)
+                    card_dirs = [d for d in os.listdir(set_path) 
+                               if os.path.isdir(os.path.join(set_path, d))]
+                    
+                    for card_dir in card_dirs:
+                        card_path = os.path.join(set_path, card_dir)
+                        for filename in os.listdir(card_path):
+                            if filename.lower().endswith(('.webp', '.jpg', '.jpeg', '.png')):
+                                # Передаем путь к папке карты для парсинга
+                                folder_path = os.path.join(set_dir, card_dir)
+                                card_info = self.parse_filename(filename, folder_path)
+                                if card_info:
+                                    # Добавляем полный путь к файлу
+                                    card_info['filepath'] = os.path.join(set_dir, card_dir, filename)
+                                    card_info['class_from_folder'] = f"{set_dir}_{card_dir}"
+                                    self.data.append(card_info)
+            else:
+                # Старая структура с подпапками - загружаем из подпапок
+                print("Обнаружена старая структура с подпапками")
+                for subdir in subdirs:
+                    subdir_path = os.path.join(self.cards_dir, subdir)
+                    for filename in os.listdir(subdir_path):
+                        if filename.lower().endswith(('.webp', '.jpg', '.jpeg', '.png')):
+                            card_info = self.parse_filename(filename)
+                            if card_info:
+                                # Добавляем путь к подпапке
+                                card_info['filepath'] = os.path.join(subdir, filename)
+                                card_info['class_from_folder'] = subdir
+                                self.data.append(card_info)
         else:
             # Изображения в корне папки
             print("Загружаем изображения из корня папки...")

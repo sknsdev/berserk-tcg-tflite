@@ -210,8 +210,18 @@ class AdvancedDataAugmentator:
         except Exception:
             return ""
     
-    def parse_card_info(self, filename: str) -> Optional[Dict[str, str]]:
-        """Парсинг информации о карте из имени файла"""
+    def parse_card_info(self, filename: str, row_data: Optional[Dict] = None) -> Optional[Dict[str, str]]:
+        """Парсинг информации о карте из имени файла или данных строки"""
+        # Если есть данные строки с уже распарсенной информацией, используем их
+        if row_data and all(key in row_data for key in ['set_name', 'card_number', 'variant']):
+            return {
+                'set_name': str(row_data['set_name']),
+                'card_number': str(row_data['card_number']),
+                'variant': str(row_data['variant']),
+                'base_name': f"{row_data['set_name']}_{row_data['card_number']}_{row_data['variant']}"
+            }
+        
+        # Fallback: парсинг из имени файла (старая логика)
         name = Path(filename).stem
         
         # Убираем суффикс аугментации если есть
@@ -331,7 +341,7 @@ class AdvancedDataAugmentator:
                     continue
                 
                 # Парсинг информации о карте
-                card_info = self.parse_card_info(row['filename'])
+                card_info = self.parse_card_info(row['filename'], row.to_dict())
                 if not card_info:
                     self.logger.warning(f"Не удалось распарсить: {row['filename']}")
                     continue

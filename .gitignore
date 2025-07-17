@@ -32,6 +32,7 @@ cards_dataset.csv
 augmented_label_encoders.json
 *.csv
 dataset_report.json
+label_encoders.json
 model_info.json
 test_results.png
 training_history.png
