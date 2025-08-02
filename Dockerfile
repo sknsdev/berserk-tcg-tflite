@@ -21,6 +21,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
+# Создаем пользователя для безопасности
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
 # Копируем файл зависимостей
 COPY requirements.txt .
 
@@ -29,16 +33,13 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt && \
     pip cache purge
 
-# Создаем пользователя для безопасности
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
-
-# Копируем весь проект
-COPY --chown=appuser:appuser . .
-
 # Создаем необходимые директории
 RUN mkdir -p cards cards_augmented models logs && \
     chown -R appuser:appuser /app
+
+# Копируем только необходимые Python файлы
+COPY --chown=appuser:appuser *.py ./
+COPY --chown=appuser:appuser web_assets/ ./web_assets/
 
 # Устанавливаем переменные окружения
 ENV PYTHONPATH=/app

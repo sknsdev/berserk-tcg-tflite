@@ -52,11 +52,14 @@ logs/
 # Documentation
 *.md
 docs/
+DOCKER_QUICKSTART.md
+README.md
 
 # Large model files (будут копироваться отдельно при необходимости)
 *.h5
 *.tflite
 *.pb
+*.npy
 
 # Jupyter notebooks
 *.ipynb
@@ -70,3 +73,45 @@ docs/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+
+
+# Docker scripts and configs (не нужны внутри контейнера)
+docker-*.bat
+docker-*.ps1
+docker-compose.yml
+docker-compose-*.bat
+Dockerfile
+.dockerignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Node.js (если есть)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Test files and coverage
+test_*/
+tests/
+.tox/
+.nox/
+
+# Cache directories
+.cache/
+.npm/
+.yarn/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock

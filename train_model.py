@@ -290,12 +290,12 @@ def main():
         
         # Первый этап обучения
         print("\n=== ПЕРВЫЙ ЭТАП ОБУЧЕНИЯ ===")
-        history1 = classifier.train(X_train, y_train, X_val, y_val, epochs=15, batch_size=32)
+        history1 = classifier.train(X_train, y_train, X_val, y_val, epochs=20, batch_size=32)
         
         # Fine-tuning
         print("\n=== FINE-TUNING ===")
         classifier.fine_tune_model()
-        history2 = classifier.train(X_train, y_train, X_val, y_val, epochs=15, batch_size=16)
+        history2 = classifier.train(X_train, y_train, X_val, y_val, epochs=20, batch_size=16)
         
         # Оценка модели
         print("\n=== ОЦЕНКА МОДЕЛИ ===")
